@@ -12,6 +12,7 @@ import {
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(""); // State to handle login errors
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,10 +22,15 @@ const Login = () => {
         { username, password }
       );
       localStorage.setItem("token", data.token);
+      window.location.href = '/'
       console.log("Login successful!");
-      // Optionally, redirect or dispatch a login success action
+
+      // Optionally, redirect to a different page after successful login
+      // e.g., window.location.href = '/dashboard'; // Redirect to dashboard
     } catch (error) {
+      // Handle errors (e.g., invalid credentials)
       console.log("Error logging in:", error);
+      setError("Invalid credentials. Please try again."); // Set error message
     }
   };
 
@@ -34,6 +40,18 @@ const Login = () => {
         <Text align="center" size="xl" weight={500} className="text-gray-800">
           Login to Your Account
         </Text>
+        {/* Display error message if login fails */}
+        {error && (
+          <Text
+            align="center"
+            color="red"
+            size="sm"
+            weight={400}
+            className="mb-4"
+          >
+            {error}
+          </Text>
+        )}
         <form onSubmit={handleSubmit}>
           <div className="mt-4">
             <TextInput

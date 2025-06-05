@@ -56,6 +56,7 @@ const List: React.FC = () => {
   const [checklist, setChecklist] = useState<string[]>([""]);
   const [modalOpened, setModalOpened] = useState(false);
   const [checkModalOpened, setCheckModalOpened] = useState(false);
+  const [newChecklistItem, setNewChecklistItem] = useState("");
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
@@ -63,13 +64,14 @@ const List: React.FC = () => {
     const newTask: Task = {
       id: Math.random().toString(),
       title,
-      checklist: checklist.map((item) => ({ item, completed: false })),
+      checklist: [], // Initialize with an empty checklist
     };
     setTasks((prevTasks) => [...prevTasks, newTask]);
     setTitle("");
-    setChecklist([""]);
+    setChecklist([]); // Clear the checklist state as well
     setModalOpened(false);
   };
+  
 
   const handleAddChecklistItem = () => {
     if (selectedTaskId) {
@@ -77,15 +79,20 @@ const List: React.FC = () => {
         if (task.id === selectedTaskId) {
           return {
             ...task,
-            checklist: [...task.checklist, { item: "", completed: false }],
+            checklist: [
+              ...task.checklist,
+              { item: newChecklistItem, completed: false },
+            ],
           };
         }
         return task;
       });
       setTasks(updatedTasks);
+      setNewChecklistItem(""); // Clear the input after adding the item
       setCheckModalOpened(false);
     }
   };
+  
 
   const handleChecklistChange = (
     taskId: string,
@@ -166,7 +173,6 @@ const List: React.FC = () => {
           </Card>
         ))}
       </Stack>
-
       {/* Create Task Modal */}
       <Modal
         opened={modalOpened}
@@ -185,31 +191,23 @@ const List: React.FC = () => {
           Create Task
         </Button>
       </Modal>
-
       {/* Add Checklist Modal */}
       <Modal
         opened={checkModalOpened}
         onClose={() => setCheckModalOpened(false)}
         title="Add New Checklist Item"
       >
-        <Stack mt="md">
-          {tasks
-            .find((task) => task.id === selectedTaskId)
-            ?.checklist.map((item, index) => (
-              <TextInput
-                key={index}
-                label={`Checklist Item ${index + 1}`}
-                value={item.item}
-                onChange={(e) =>
-                  handleChecklistChange(selectedTaskId!, index, e.target.value)
-                }
-                placeholder="Enter item"
-              />
-            ))}
-        </Stack>
+        {/* Form for adding a new checklist item */}
+        <TextInput
+          label="New Checklist Item"
+          value={newChecklistItem} // Store the value in a string, not an array
+          onChange={(e) => setNewChecklistItem(e.target.value)} // Update the input value
+          placeholder="Enter new checklist item"
+        />
 
+        {/* Add New Item Button */}
         <Button
-          onClick={handleAddChecklistItem}
+          onClick={handleAddChecklistItem} // Add the item to the checklist
           variant="light"
           color="blue"
           fullWidth
@@ -218,7 +216,6 @@ const List: React.FC = () => {
           Add Checklist Item
         </Button>
       </Modal>
-
       {/* Create New Task Button */}
       <Group className="mt-4" position="center">
         <Button onClick={() => setModalOpened(true)}>Create New Task</Button>
