@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Button,
   TextInput,
@@ -12,87 +12,116 @@ import {
   Title,
   Accordion,
 } from "@mantine/core";
+import axios from "axios";
 
 interface ChecklistItem {
-  item: string;
+  title: string;
   completed: boolean;
 }
 
 interface Task {
-  id: string;
+  _id: string;
   title: string;
-  checklist: ChecklistItem[];
+  items: ChecklistItem[];
 }
 
 const List: React.FC = () => {
-  // State for tasks and form
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: "1",
-      title: "Light Bulb 150S",
-      checklist: [
-        {
-          item: "Electrical connection, general, 3-pin. Electrical",
-          completed: false,
-        },
-        { item: "Final installation done", completed: true },
-        {
-          item: "L3.1 LED surface-mounted wall light Architect",
-          completed: false,
-        },
-      ],
-    },
-    {
-      id: "2",
-      title: "Sample Task 2",
-      checklist: [
-        { item: "Setup environment", completed: false },
-        { item: "Deploy application", completed: false },
-      ],
-    },
-  ]);
-
+  const [tasks, setTasks] = useState<Task[]>([]);
+  // {
+  //     "_id": "6841446f05000dfea22141cb",
+  //     "title": "My New Task",
+  //     "user": "684097de2bf7a91b76e052ac",
+  //     "items": [
+  //         {
+  //             "_id": "6841464df28911d0c413cdbb",
+  //             "title": "Item on this task",
+  //             "completed": false,
+  //             "task": "6841446f05000dfea22141cb",
+  //             "__v": 0
+  //         }
+  //     ],
+  //     "__v": 1
+  // }
   const [title, setTitle] = useState("");
-  const [checklist, setChecklist] = useState<string[]>([""]);
+  const [items, setChecklist] = useState<string[]>([""]);
   const [modalOpened, setModalOpened] = useState(false);
   const [checkModalOpened, setCheckModalOpened] = useState(false);
   const [newChecklistItem, setNewChecklistItem] = useState("");
+  console.log("newChecklistItem:", newChecklistItem);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch the token from localStorage
+        const token = localStorage.getItem("token");
 
-  const handleCreateTask = () => {
-    const newTask: Task = {
-      id: Math.random().toString(),
-      title,
-      checklist: [], // Initialize with an empty checklist
+        if (!token) {
+          console.error("No token found in localStorage");
+          return;
+        }
+
+        // Make the POST request with the token in the Authorization header
+        const res = await axios.get("http://localhost:5000/api/tasks/", {
+          headers: {
+            Authorization: `Bearer ${token}`, // Send the token in the Authorization header
+          },
+        });
+
+        console.log(res.data); // Handle the response data as needed
+        setTasks(res.data);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+      }
     };
-    setTasks((prevTasks) => [...prevTasks, newTask]);
+
+    fetchData();
+  }, [modalOpened, checkModalOpened]);
+  const handleCreateTask = async () => {
+    try {
+      const { data } = await axios.post(
+        "http://localhost:5000/api/tasks/",
+        {
+          title,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`, // Send the token in the Authorization header
+          },
+        }
+      );
+      console.log(data);
+    } catch (error) {
+      console.log("Error logging in:", error);
+    }
     setTitle("");
     setChecklist([]); // Clear the checklist state as well
     setModalOpened(false);
   };
-  
-
-  const handleAddChecklistItem = () => {
+  console.log(selectedTaskId);
+  const handleAddChecklistItem = async () => {
     if (selectedTaskId) {
-      const updatedTasks = tasks.map((task) => {
-        if (task.id === selectedTaskId) {
-          return {
-            ...task,
-            checklist: [
-              ...task.checklist,
-              { item: newChecklistItem, completed: false },
-            ],
-          };
-        }
-        return task;
-      });
-      setTasks(updatedTasks);
+      try {
+        const { data } = await axios.post(
+          `http://localhost:5000/api/tasks/${selectedTaskId}/items`,
+          {
+            title: newChecklistItem,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`, // Send the token in the Authorization header
+            },
+          }
+        );
+        console.log(data);
+      } catch (error) {
+        console.log("Error logging in:", error);
+      }
+      setSelectedTaskId(null);
       setNewChecklistItem(""); // Clear the input after adding the item
       setCheckModalOpened(false);
     }
   };
-  
 
   const handleChecklistChange = (
     taskId: string,
@@ -100,10 +129,10 @@ const List: React.FC = () => {
     value: string
   ) => {
     const updatedTasks = tasks.map((task) => {
-      if (task.id === taskId) {
-        const updatedChecklist = [...task.checklist];
+      if (task._id === taskId) {
+        const updatedChecklist = [...task.items];
         updatedChecklist[index].item = value;
-        return { ...task, checklist: updatedChecklist };
+        return { ...task, items: updatedChecklist };
       }
       return task;
     });
@@ -112,10 +141,10 @@ const List: React.FC = () => {
 
   const handleCheckboxChange = (taskId: string, index: number) => {
     const updatedTasks = tasks.map((task) => {
-      if (task.id === taskId) {
-        const updatedChecklist = [...task.checklist];
+      if (task._id === taskId) {
+        const updatedChecklist = [...task.items];
         updatedChecklist[index].completed = !updatedChecklist[index].completed;
-        return { ...task, checklist: updatedChecklist };
+        return { ...task, items: updatedChecklist };
       }
       return task;
     });
@@ -126,52 +155,61 @@ const List: React.FC = () => {
     <Container>
       {/* Task List with Accordion */}
       <Stack mt={40}>
-        {tasks.map((task) => (
-          <Card key={task.id} shadow="sm" padding="lg" radius="md" withBorder>
-            {/* Task Title - Accordion Header */}
-            <Accordion>
-              <Accordion.Item value={task.id}>
-                <Accordion.Control
-                  onClick={() =>
-                    setExpandedTaskId(
-                      expandedTaskId === task.id ? null : task.id
-                    )
-                  }
-                >
-                  <Title order={3}>{task.title}</Title>
-                </Accordion.Control>
-                <Accordion.Panel>
-                  {/* Checklist Items */}
-                  <Stack>
-                    {task.checklist.map((item, index) => (
-                      <Group key={index} position="apart">
-                        <Text>{item.item}</Text>
-                        <Checkbox
-                          checked={item.completed}
-                          onChange={() => handleCheckboxChange(task.id, index)}
-                        />
-                      </Group>
-                    ))}
-                  </Stack>
-
-                  {/* Add New Item Button */}
-                  <Button
-                    onClick={() => {
-                      setSelectedTaskId(task.id);
-                      setCheckModalOpened(true);
-                    }}
-                    variant="light"
-                    color="blue"
-                    fullWidth
-                    mt="md"
+        {tasks &&
+          tasks.map((task) => (
+            <Card
+              key={task._id}
+              shadow="sm"
+              padding="lg"
+              radius="md"
+              withBorder
+            >
+              {/* Task Title - Accordion Header */}
+              <Accordion>
+                <Accordion.Item value={task._id}>
+                  <Accordion.Control
+                    onClick={() =>
+                      setExpandedTaskId(
+                        expandedTaskId === task._id ? null : task._id
+                      )
+                    }
                   >
-                    Add New Item
-                  </Button>
-                </Accordion.Panel>
-              </Accordion.Item>
-            </Accordion>
-          </Card>
-        ))}
+                    <Title order={3}>{task.title}</Title>
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    {/* Checklist Items */}
+                    <Stack>
+                      {task.items.map((item, index) => (
+                        <Group key={index} position="apart">
+                          <Text>{item.title}</Text>
+                          <Checkbox
+                            checked={item.completed}
+                            onChange={() =>
+                              handleCheckboxChange(task._id, index)
+                            }
+                          />
+                        </Group>
+                      ))}
+                    </Stack>
+
+                    {/* Add New Item Button */}
+                    <Button
+                      onClick={() => {
+                        setSelectedTaskId(task._id);
+                        setCheckModalOpened(true);
+                      }}
+                      variant="light"
+                      color="blue"
+                      fullWidth
+                      mt="md"
+                    >
+                      Add New Item
+                    </Button>
+                  </Accordion.Panel>
+                </Accordion.Item>
+              </Accordion>
+            </Card>
+          ))}
       </Stack>
       {/* Create Task Modal */}
       <Modal

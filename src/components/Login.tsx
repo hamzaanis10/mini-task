@@ -22,7 +22,7 @@ const Login = () => {
         { username, password }
       );
       localStorage.setItem("token", data.token);
-      window.location.href = '/'
+      window.location.href = "/";
       console.log("Login successful!");
 
       // Optionally, redirect to a different page after successful login
